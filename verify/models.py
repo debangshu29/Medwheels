@@ -34,7 +34,6 @@ class Driver(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, primary_key=True, related_name='driver_profile')
 
     license_number = models.CharField(max_length=50, blank=True, null=True)
-    number_plate = models.CharField(max_length=50,blank=True, null=True)
     number_plate = models.CharField(max_length=50, blank=True, null=True)  # New field
     car_name = models.CharField(max_length=100, blank=True, null=True)  # New field
     AMBULANCE_TYPE_CHOICES = [
@@ -46,6 +45,7 @@ class Driver(models.Model):
     rating_total = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, blank=True, null=True)
     rating_count = models.PositiveIntegerField(default=0, blank=True, null=True)
     profile_image = models.ImageField(upload_to='profile_images/', blank=True, null=True)  # This saves images to 'media/profile_images/'
+    is_available = models.BooleanField(default=True, db_index=True)  # Concurrency control field
 
     def __str__(self):
         return self.license_number

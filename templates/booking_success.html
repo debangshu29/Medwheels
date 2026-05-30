@@ -144,9 +144,25 @@
 
     <script>
         function redirectToRideMap() {
-            setTimeout(function () {
-                window.location.href = "{% url 'ride_map' ride_id=ride_id %}";
-            }, 30000);
+            const rideId = "{{ ride_id }}";
+            const checkUrl = `/check_ride_confirmation/${rideId}/`;
+            const mapUrl = "{% url 'ride_map' ride_id=ride_id %}";
+            
+            const interval = setInterval(() => {
+                fetch(checkUrl)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.is_confirmed) {
+                            clearInterval(interval);
+                            window.location.href = mapUrl;
+                        } else if (data.status === 'cancelled') {
+                            clearInterval(interval);
+                            alert("Driver did not respond in time. Your request has timed out. Please try booking again.");
+                            window.location.href = "/";
+                        }
+                    })
+                    .catch(err => console.error(err));
+            }, 3000); // Check every 3 seconds
         }
     </script>
 </body>

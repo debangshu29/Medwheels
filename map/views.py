@@ -1,5 +1,5 @@
 from decimal import Decimal
-from django.http import HttpResponseBadRequest, HttpResponseNotFound
+from django.http import HttpResponseBadRequest, HttpResponseNotFound, HttpResponseForbidden
 from django.db.models import F, FloatField, DecimalField
 from django.db.models import F, ExpressionWrapper, FloatField
 from django.urls import reverse
@@ -12,6 +12,7 @@ from django.db.models import Min, ExpressionWrapper
 from django.contrib.auth.decorators import login_required
 import googlemaps
 from verify.models import CustomUser
+import math
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
@@ -22,6 +23,7 @@ from django.db import transaction
 from django.conf import settings
 import uuid
 from django.contrib.auth import get_user_model
+import threading
 from django.views.decorators.csrf import csrf_exempt
 import logging
 from urllib.parse import urlencode
@@ -54,11 +56,17 @@ def about(request):
     return render(request, 'about.html')
 
 logger = logging.getLogger(__name__)
+@login_required
 def ride_map(request, ride_id):
-    try:
-        ride = get_object_or_404(Ride, id=ride_id)
-    except Ride.DoesNotExist:
-        return render(request, 'ride_not_confirmed.html')
+    # Fetch the ride object
+    ride = get_object_or_404(Ride, id=ride_id)
+    
+    # IDOR Protection: Only the passenger or the assigned driver can access this ride
+    if request.user != ride.user and request.user != ride.driver.user:
+        return HttpResponseForbidden("You are not authorized to view this ride.")
+
+    # Convert numeric values to strings to prevent formatting issues
+    fare = str(ride.fare) if ride.fare is not None else ""
 
     if ride.is_confirmed:
         pickup_location = (ride.pickup_latitude, ride.pickup_longitude)
@@ -95,7 +103,7 @@ def ride_map(request, ride_id):
         pickup_longitude = float(pickup_location[1])
 
         # Calculate the estimated time and distance for the ride from pickup to drop-off
-        ride_est_time, ride_est_distance = calculate_route(
+        ride_est_time, ride_est_distance, ride_dist_val = calculate_route(
             (pickup_latitude, pickup_longitude),
             (ride.drop_latitude, ride.drop_longitude)
         )
@@ -109,10 +117,10 @@ def ride_map(request, ride_id):
         ambulance_type_display = ambulance_type_display_map.get(ambulance_type, ambulance_type)
 
         # Calculate fare using the distance and ambulance type
-        fare = calculate_fare(float(ride_est_distance.split()[0]), ambulance_type)
+        fare = calculate_fare(ride_dist_val / 1000.0, ambulance_type)
 
         # Calculate the driver's estimated time and distance to the pickup location
-        driver_est_time, driver_est_distance = calculate_route(
+        driver_est_time, driver_est_distance, _ = calculate_route(
             (driver_latitude, driver_longitude),
             (pickup_latitude, pickup_longitude)
         )
@@ -214,7 +222,7 @@ def dashboard(request):
 
 
 
-@csrf_exempt
+@login_required
 def update_location(request):
     if request.method == 'POST':
         try:
@@ -256,18 +264,28 @@ def service_view(request):
     return render(request, 'service.html', {'locations': locations})
 
 
+from .models import Pricing
+
 def calculate_fare(distance, ambulance_type):
-    base_fare = 50.0  # Default base fare for Med BLS
-    per_km_rate = 10.0  # Default per km rate for Med BLS
+    distance_dec = Decimal(str(distance))
+    
+    # Try to fetch pricing from database, fallback to defaults if not found
+    try:
+        pricing = Pricing.objects.get(ambulance_type=ambulance_type)
+        base_fare = pricing.base_fare
+        per_km_rate = pricing.per_km_rate
+    except Pricing.DoesNotExist:
+        # Fallback defaults if admin hasn't configured them yet
+        base_fare = Decimal('50.00')
+        per_km_rate = Decimal('10.00')
+        if ambulance_type == 'med_als':
+            base_fare = Decimal('80.00')
+            per_km_rate = Decimal('20.00')
+        elif ambulance_type == 'med_icu':
+            base_fare = Decimal('100.00')
+            per_km_rate = Decimal('30.00')
 
-    if ambulance_type == 'med_als':
-        base_fare += 30.0  # Additional base fare for Med ALS
-        per_km_rate += 10.0  # Additional per km rate for Med ALS
-    elif ambulance_type == 'med_icu':
-        base_fare += 50.0  # Additional base fare for Med ICU
-        per_km_rate += 20.0  # Additional per km rate for Med ICU
-
-    return base_fare + (per_km_rate * distance)
+    return base_fare + (per_km_rate * distance_dec)
 
 def address_to_coordinates(address):
     gmaps = googlemaps.Client(key=settings.GOOGLE_MAPS_API_KEY)
@@ -285,34 +303,7 @@ def get_distance_matrix(origins, destinations):
     return matrix
 
 
-def dijkstra_algorithm(graph, start_node):
-    unvisited_nodes = list(graph.keys())
-    shortest_path = {}
-    previous_nodes = {}
-    max_value = float('inf')
 
-    for node in unvisited_nodes:
-        shortest_path[node] = max_value
-    shortest_path[start_node] = 0
-
-    while unvisited_nodes:
-        current_min_node = None
-        for node in unvisited_nodes:
-            if current_min_node is None:
-                current_min_node = node
-            elif shortest_path[node] < shortest_path[current_min_node]:
-                current_min_node = node
-
-        neighbors = graph[current_min_node].items()
-        for neighbor, weight in neighbors:
-            tentative_value = shortest_path[current_min_node] + weight
-            if tentative_value < shortest_path[neighbor]:
-                shortest_path[neighbor] = tentative_value
-                previous_nodes[neighbor] = current_min_node
-
-        unvisited_nodes.remove(current_min_node)
-
-    return previous_nodes, shortest_path
 
 def ride_view(request):
     if request.method == 'POST':
@@ -324,7 +315,14 @@ def ride_view(request):
         drop_lat, drop_lng = address_to_coordinates(drop_address)
 
         if pickup_lat is not None and pickup_lng is not None and drop_lat is not None and drop_lng is not None:
-            driver_locations = DriverLocation.objects.all()
+            delta_lat = Decimal('0.09')
+            delta_lng = Decimal(10 / (111 * math.cos(math.radians(float(pickup_lat)))))
+            
+            driver_locations = DriverLocation.objects.filter(
+                driver__is_available=True,
+                latitude__range=(Decimal(pickup_lat) - delta_lat, Decimal(pickup_lat) + delta_lat),
+                longitude__range=(Decimal(pickup_lng) - delta_lng, Decimal(pickup_lng) + delta_lng)
+            )
             if not driver_locations:
                 return HttpResponseBadRequest("No drivers available.")
 
@@ -333,37 +331,29 @@ def ride_view(request):
 
             matrix = get_distance_matrix(origins, destinations)
 
-            graph = {}
-            graph[(float(pickup_lat), float(pickup_lng))] = {}
-            for i, element in enumerate(matrix['rows'][0]['elements']):
-                distance = element['distance']['value']
-                driver_location = (float(driver_locations[i].latitude), float(driver_locations[i].longitude))
-                graph[(float(pickup_lat), float(pickup_lng))][driver_location] = distance
-                graph[driver_location] = {}  # Initialize the driver's location in the graph
-
-            previous_nodes, shortest_path = dijkstra_algorithm(graph, (float(pickup_lat), float(pickup_lng)))
-
             nearest_driver = None
             min_distance = float('inf')
-            for driver in driver_locations:
-                driver_node = (float(driver.latitude), float(driver.longitude))
-                if driver_node in shortest_path and shortest_path[driver_node] < min_distance:
-                    min_distance = shortest_path[driver_node]
-                    nearest_driver = driver
+            if matrix.get('rows') and matrix['rows'][0].get('elements'):
+                for i, element in enumerate(matrix['rows'][0]['elements']):
+                    if element.get('status') == 'OK':
+                        distance = element.get('distance', {}).get('value', float('inf'))
+                        if distance < min_distance:
+                            min_distance = distance
+                            nearest_driver = driver_locations[i]
 
             # Calculate the estimated time and distance for the driver to reach the pickup location
-            driver_est_time, driver_est_distance = calculate_route(
+            driver_est_time, driver_est_distance, _ = calculate_route(
                 (nearest_driver.latitude, nearest_driver.longitude),
                 (pickup_lat, pickup_lng)
             )
 
             # Calculate the estimated time and distance for the ride from pickup to drop-off
-            ride_est_time, ride_est_distance = calculate_route(
+            ride_est_time, ride_est_distance, ride_dist_val = calculate_route(
                 (pickup_lat, pickup_lng),
                 (drop_lat, drop_lng)
             )
 
-            ride_distance_km = float(ride_est_distance.split()[0])
+            ride_distance_km = ride_dist_val / 1000.0
             fare_medbls = calculate_fare(ride_distance_km, 'med_bls')
             fare_medals = calculate_fare(ride_distance_km, 'med_als')
             fare_medicu = calculate_fare(ride_distance_km, 'med_icu')
@@ -428,31 +418,37 @@ def calculate_route(start_location, end_location):
                     if element['status'] == 'OK':
                         estimated_time = element.get('duration', {}).get('text')
                         estimated_distance = element.get('distance', {}).get('text')
+                        distance_value = element.get('distance', {}).get('value', 0)
                         print(f"Estimated Time: {estimated_time}, Estimated Distance: {estimated_distance}")
                     else:
                         print("Error in element status:", element['status'])
                         estimated_time = "Not Available"
                         estimated_distance = "Not Available"
+                        distance_value = 0
                 else:
                     print("No elements found")
                     estimated_time = "Not Available"
                     estimated_distance = "Not Available"
+                    distance_value = 0
             else:
                 print("No rows found")
                 estimated_time = "Not Available"
                 estimated_distance = "Not Available"
+                distance_value = 0
         else:
             print("Response status not OK:", data['status'])
             estimated_time = "Not Available"
             estimated_distance = "Not Available"
+            distance_value = 0
 
     except Exception as e:
         # Handle API request errors
         print(f'Error: {e}')
         estimated_time = "Not Available"
         estimated_distance = "Not Available"
+        distance_value = 0
 
-    return estimated_time, estimated_distance
+    return estimated_time, estimated_distance, distance_value
 
 
 
@@ -477,35 +473,43 @@ def save_booking_view(request):
         ambulance_type = request.POST['ambulance_type']
         fare = Decimal(request.POST['fare'])
 
-        # Correct query: Get driver locations with the specified ambulance type
-        driver_locations = DriverLocation.objects.filter(driver__ambulance_type=ambulance_type)
+        # Correct query: Get driver locations with the specified ambulance type and within 10km radius
+        delta_lat = Decimal('0.09')
+        delta_lng = Decimal(10 / (111 * math.cos(math.radians(float(pickup_lat)))))
+
+        driver_locations = DriverLocation.objects.filter(
+            driver__ambulance_type=ambulance_type,
+            driver__is_available=True,
+            latitude__range=(pickup_lat - delta_lat, pickup_lat + delta_lat),
+            longitude__range=(pickup_lng - delta_lng, pickup_lng + delta_lng)
+        )
 
         if not driver_locations:
             messages.error(request, 'No available drivers with the specified ambulance type. Please try again later.')
-            return render(request, 'service1.html')
+            return redirect('service')
 
         origins = [(pickup_lat, pickup_lng)]
         destinations = [(driver.latitude, driver.longitude) for driver in driver_locations]
 
         matrix = get_distance_matrix(origins, destinations)
 
-        graph = {(pickup_lat, pickup_lng): {}}
-        for i, driver_location in enumerate(driver_locations):
-            driver_node = (driver_location.latitude, driver_location.longitude)
-            distance = matrix['rows'][0]['elements'][i]['distance']['value']  # distance in meters
-            distance_km = distance / 1000.0  # convert to kilometers
-            graph[(pickup_lat, pickup_lng)][driver_node] = distance_km
-            graph[driver_node] = {}
-
-        previous_nodes, shortest_paths = dijkstra_algorithm(graph, (pickup_lat, pickup_lng))
-        nearest_driver_node = min(shortest_paths, key=lambda k: shortest_paths[k] if k != (pickup_lat, pickup_lng) else float('inf'))
-        nearest_driver = driver_locations.get(latitude=nearest_driver_node[0], longitude=nearest_driver_node[1])
+        nearest_driver = None
+        min_distance = float('inf')
+        if matrix.get('rows') and matrix['rows'][0].get('elements'):
+            for i, driver_location in enumerate(driver_locations):
+                if i < len(matrix['rows'][0]['elements']):
+                    element = matrix['rows'][0]['elements'][i]
+                    if element.get('status') == 'OK':
+                        distance = element.get('distance', {}).get('value', float('inf'))
+                        if distance < min_distance:
+                            min_distance = distance
+                            nearest_driver = driver_location
 
         if nearest_driver:
             driver = nearest_driver.driver
 
             # Calculate estimated time and distance for the ride from pickup to drop-off
-            ride_est_time, ride_est_distance = calculate_route((pickup_lat, pickup_lng), (drop_lat, drop_lng))
+            ride_est_time, ride_est_distance, _ = calculate_route((pickup_lat, pickup_lng), (drop_lat, drop_lng))
 
             ride = Ride.objects.create(
                 driver=driver,
@@ -542,8 +546,8 @@ def save_booking_view(request):
                 'drop_longitude': drop_lng,
                 'fare': fare,
                 'ambulance_type': ambulance_type,
-                'driver_latitude': nearest_driver_node[0],
-                'driver_longitude': nearest_driver_node[1],
+                'driver_latitude': nearest_driver.latitude,
+                'driver_longitude': nearest_driver.longitude,
                 'driver_name': driver.user.first_name + ' ' + driver.user.last_name,  # Correct access to CustomUser
                 'phone_number': driver.user.username,  # Correct access to CustomUser
                 'license_number': driver.license_number,
@@ -558,19 +562,29 @@ def save_booking_view(request):
 
 
 def booking_success(request):
-    # Check if the booking request is sent and confirmed
-    if request.session.get('ride_confirmed'):
-        # If the ride is confirmed, redirect to ride_map
-        ride_id = request.session.get('ride_id')
-        if ride_id:
-            return redirect('ride_map', ride_id=ride_id)
-    else:
-        # If the ride is not confirmed, render the booking success page
-        return render(request, 'booking_success.html')
+    return render(request, 'booking_success.html')
 
-
-
-
+def check_ride_confirmation(request, ride_id):
+    try:
+        ride = Ride.objects.get(id=ride_id)
+        
+        # Ghost Ride Bug Auto-Timeout Fix: Wait 3 minutes for confirmation
+        if not ride.is_confirmed and ride.status != 'cancelled':
+            time_difference = timezone.now() - ride.created_at
+            if time_difference > timedelta(minutes=3):
+                ride.status = 'cancelled'
+                ride.save()
+                
+                # Make driver available again
+                driver_profile = ride.driver
+                driver_profile.is_available = True
+                driver_profile.save()
+                
+                return JsonResponse({'is_confirmed': False, 'status': 'cancelled'})
+        
+        return JsonResponse({'is_confirmed': ride.is_confirmed, 'status': ride.status})
+    except Ride.DoesNotExist:
+        return JsonResponse({'is_confirmed': False})
 
 def generate_unique_token():
     # Generate a unique token for ride confirmation
@@ -599,15 +613,14 @@ def send_ride_request_email(request, ride):
     sender = settings.EMAIL_HOST_USER  # Your Gmail email address
     recipient = ride.driver.user.email  # Driver's email address
 
-    send_mail(
-        subject,
-        plain_message,
-        sender,
-        [recipient],
-        html_message=email_html_message,
-    )
+    threading.Thread(
+        target=send_mail,
+        args=(subject, plain_message, sender, [recipient]),
+        kwargs={'html_message': email_html_message}
+    ).start()
 
 
+@transaction.atomic
 def accept_ride_by_email(request):
     if request.method == 'GET':
         token = request.GET.get('token')
@@ -616,12 +629,27 @@ def accept_ride_by_email(request):
         ride = Ride.objects.filter(token=token).first()
 
         if ride:
+            if ride.status == 'cancelled':
+                messages.error(request, 'This ride request has expired or been cancelled.')
+                return render(request, 'ride_not_confirmed.html')
+                
+            # Lock the driver row to prevent concurrency double-booking
+            driver_profile = Driver.objects.select_for_update().get(id=ride.driver.id)
+            
+            # Concurrency Check: Is driver still available?
+            if not driver_profile.is_available:
+                messages.error(request, 'You have already accepted another ride.')
+                return render(request, 'ride_not_confirmed.html')
+
             # If the ride exists, update its status to 'confirmed'
             ride.is_confirmed = True
             ride.save()
+            
+            # Make driver unavailable
+            driver_profile.is_available = False
+            driver_profile.save()
+
             send_code_to_user(ride.id, ride.code)
-            # Set session variable to indicate ride confirmation
-            request.session['ride_confirmed'] = True
 
             # Send notification to the user (passenger) confirming the ride
             # Implement your notification logic here
@@ -644,6 +672,10 @@ def reject_ride_by_email(request):
 
         if ride:
             # If the ride exists, delete it from the database or update its status to indicate rejection
+            driver_profile = ride.driver
+            driver_profile.is_available = True
+            driver_profile.save()
+            
             ride.delete()  # You can adjust this to update status instead of deleting
 
             messages.info(request, 'Ride rejected via email. Booking not confirmed.')
@@ -656,8 +688,11 @@ def reject_ride_by_email(request):
         return HttpResponseBadRequest("Invalid request method.")
 
 
+@login_required
 def verify_ride(request, ride_id):
     ride = get_object_or_404(Ride, id=ride_id)
+    if request.user != ride.user and request.user != ride.driver.user:
+        return HttpResponseForbidden("You are not authorized to access this ride.")
 
     if request.method == 'POST':
         try:
@@ -667,8 +702,8 @@ def verify_ride(request, ride_id):
         except ValueError:
             return HttpResponseBadRequest("Invalid JSON data")
 
-        # Log the entered and actual code for debugging
-        logger.info(f"Entered code: {entered_code}, Actual code: {ride.code}")
+        # Log the verification attempt
+        logger.info(f"Attempting verification for ride {ride.id}")
 
         if entered_code == ride.code:
             ride.is_verified = True
@@ -691,31 +726,11 @@ def check_ride_status(request, ride_id):
     Checks if the ride is verified.
     """
     ride = get_object_or_404(Ride, id=ride_id)
+    if request.user != ride.user and request.user != ride.driver.user:
+        return HttpResponseForbidden("You are not authorized to view this ride.")
     return JsonResponse({'is_verified': ride.is_verified})
 
-def generate_and_send_code(request, ride_id):
-    try:
-        # Retrieve the ride object
-        ride = Ride.objects.get(id=ride_id)
-    except Ride.DoesNotExist:
-        # Handle the case where the ride object does not exist
-        return HttpResponseBadRequest("Invalid ride ID.")
-
-    # Generate a unique 4-digit code
-    code = generate_unique_4_digit_code()
-
-    # Associate the code with the ride
-    ride.pickup_code = code
-    ride.save()
-
-    # Send the code to the user (send via email, SMS, etc.)
-    send_code_to_user(ride.user.email, code)
-
-    # Generate the URL for the verify_code view
-    url = reverse('verify_code', kwargs={'ride_id': ride_id})  # Pass the ride_id parameter
-
-    # Render a page indicating that the code is sent
-    return render(request, 'code_sent.html', {'verification_url': request.build_absolute_uri(url)})
+# generate_and_send_code view was dead code and has been removed for security and stability.
 
 
 
@@ -724,6 +739,9 @@ def generate_and_send_code(request, ride_id):
 def drop_map(request, ride_id):
     # Retrieve the ride and necessary details for displaying the map
     ride = get_object_or_404(Ride, id=ride_id)
+    if request.user != ride.user and request.user != ride.driver.user:
+        return HttpResponseForbidden("You are not authorized to view this ride.")
+        
     pickup_location = (ride.pickup_latitude, ride.pickup_longitude)
     drop_location = (ride.drop_latitude, ride.drop_longitude)
     driver_name = f"{ride.driver.user.first_name} {ride.driver.user.last_name}".title()
@@ -764,11 +782,7 @@ def drop_map(request, ride_id):
     return render(request, 'drop_map.html', context)
 
 
-def generate_unique_4_digit_code():
-    """
-    Generate a unique 4-digit code.
-    """
-    return uuid.uuid4().hex[:4].upper()
+
 
 
 def send_code_to_user(ride_id, code):
@@ -802,8 +816,11 @@ def send_code_to_user(ride_id, code):
     print(f"Sending email to: {user_email}")
     print(f"Email content: {message}")
 
-    # Send the email
-    send_mail(subject, message, sender, [user_email])
+    # Send the email asynchronously
+    threading.Thread(
+        target=send_mail,
+        args=(subject, message, sender, [user_email])
+    ).start()
 
     print("Email sent successfully.")
 
@@ -822,39 +839,7 @@ def get_latest_driver_location(request, driver_id):
 
 logger = logging.getLogger(__name__)
 
-@login_required
-@require_GET
-def get_driver_location(request, ride_id):
-    try:
-        # Log the incoming request
-        logger.info(f"Fetching driver location for ride_id: {ride_id}")
 
-        # Fetch the latest driver location for the given ride ID
-        driver_location = DriverLocation.objects.filter(ride_id=ride_id).latest('timestamp')
-
-        # If the location is found, return it as a JSON response
-        if driver_location:
-            data = {
-                'latitude': driver_location.latitude,
-                'longitude': driver_location.longitude,
-
-            }
-            logger.info(f"Driver location found: {data}")
-            return JsonResponse(data)
-        else:
-            # Log if no location is found and return a 404 response
-            logger.warning(f"No driver location found for ride_id {ride_id}")
-            return JsonResponse({'error': 'Driver location not found.'}, status=404)
-
-    except DriverLocation.DoesNotExist:
-        # Log the specific error when the driver location does not exist
-        logger.error(f"DriverLocation.DoesNotExist: No driver location found for ride_id {ride_id}")
-        return JsonResponse({'error': 'Driver location not found.'}, status=404)
-
-    except Exception as e:
-        # Log any other unexpected errors
-        logger.error(f"Exception occurred while fetching driver location for ride_id {ride_id}: {str(e)}")
-        return JsonResponse({'error': f'Internal server error: {str(e)}'}, status=500)
 
 
 logger = logging.getLogger(__name__)
@@ -866,14 +851,22 @@ def get_driver_location_by_ride(request, ride_id):
 
         # Fetch the ride object
         ride = get_object_or_404(Ride, id=ride_id)
+        if request.user != ride.user and request.user != ride.driver.user:
+            return HttpResponseForbidden("You are not authorized to view this ride.")
 
         # Access the DriverLocation directly using the related name 'driver_location'
         driver_location = ride.driver.driver_location
+
+        # Stale Tracking Fix: Check if location hasn't been updated in 2 minutes
+        time_since_update = timezone.now() - driver_location.updated_at
+        if time_since_update > timedelta(minutes=2):
+            return JsonResponse({'error': 'Driver lost GPS connection. Location is stale.', 'is_stale': True})
 
         # If the location is found, return it as a JSON response
         data = {
             'latitude': driver_location.latitude,
             'longitude': driver_location.longitude,
+            'is_stale': False
         }
         logger.info(f"Driver location found: {data}")
         return JsonResponse(data)
@@ -888,7 +881,6 @@ def get_driver_location_by_ride(request, ride_id):
 
 
 @login_required
-@csrf_exempt
 def complete_ride(request, ride_id):
     """
     Marks the ride as completed and redirects driver and user to payment pages.
@@ -896,9 +888,16 @@ def complete_ride(request, ride_id):
     if request.method == 'POST':
         try:
             ride = get_object_or_404(Ride, id=ride_id)
+            if request.user != ride.user and request.user != ride.driver.user:
+                return HttpResponseForbidden("You are not authorized to access this ride.")
+                
             ride.is_completed = True
             ride.status = 'completed'
             ride.save()
+            
+            driver_profile = ride.driver
+            driver_profile.is_available = True
+            driver_profile.save()
 
             return JsonResponse({
                 'success': True,
@@ -911,11 +910,13 @@ def complete_ride(request, ride_id):
 
 
 @login_required
-@csrf_exempt
 def confirm_payment(request, ride_id):
     if request.method == 'POST':
         try:
             ride = get_object_or_404(Ride, id=ride_id)
+            if request.user != ride.user and request.user != ride.driver.user:
+                return HttpResponseForbidden("You are not authorized to access this ride.")
+                
             ride.is_paid = True
             ride.payment_confirmed = True
             ride.is_completed = True
@@ -936,6 +937,9 @@ def get_ride_completion_status(request, ride_id):
     """
     try:
         ride = get_object_or_404(Ride, id=ride_id)
+        if request.user != ride.user and request.user != ride.driver.user:
+            return HttpResponseForbidden("You are not authorized to view this ride.")
+            
         if ride.is_completed:
             return JsonResponse({
                 'is_completed': True,
@@ -953,6 +957,10 @@ def get_ride_completion_status(request, ride_id):
 
 
 def payment_page(request, ride_id):
+    ride = get_object_or_404(Ride, id=ride_id)
+    if request.user != ride.user and request.user != ride.driver.user:
+        return HttpResponseForbidden("You are not authorized to access this ride.")
+        
     if request.user.is_driver:
         return render(request, 'driver_payment.html', {'ride_id': ride_id})
     else:
@@ -960,19 +968,28 @@ def payment_page(request, ride_id):
 
 @login_required
 def user_payment(request, ride_id):
-    # Your logic for user payment
+    ride = get_object_or_404(Ride, id=ride_id)
+    if request.user != ride.user:
+        return HttpResponseForbidden("You are not authorized to access this ride.")
     return render(request, 'user_payment.html', {'ride_id': ride_id})
 
 @login_required
 def driver_payment(request, ride_id):
-    # Your logic for driver payment
+    ride = get_object_or_404(Ride, id=ride_id)
+    if not ride.driver or request.user != ride.driver.user:
+        return HttpResponseForbidden("You are not authorized to access this ride.")
     return render(request, 'driver_payment.html', {'ride_id': ride_id})
 
 @login_required
 def feedback(request, ride_id):
     ride = get_object_or_404(Ride, id=ride_id)
+    if request.user != ride.user:
+        return HttpResponseForbidden("You are not authorized to access this ride.")
 
     if request.method == 'POST':
+        if Feedback.objects.filter(ride=ride).exists():
+            return JsonResponse({'success': False, 'error': 'Feedback already submitted.'})
+            
         rating = request.POST.get('rating')
         comments = request.POST.get('comments')
         selected_options = request.POST.getlist('options')  # Get the list of selected options
@@ -1009,6 +1026,8 @@ def feedback(request, ride_id):
 @login_required
 def check_payment_status(request, ride_id):
     ride = get_object_or_404(Ride, id=ride_id)
+    if request.user != ride.user and request.user != ride.driver.user:
+        return HttpResponseForbidden("You are not authorized to access this ride.")
 
     if ride.payment_confirmed:
         # Redirect user to the feedback page
@@ -1026,10 +1045,11 @@ def check_payment_status(request, ride_id):
 
 logger = logging.getLogger(__name__)
 
-@csrf_exempt
 def update_driver_location(request):
     if request.method == 'POST':
         try:
+            if not request.user.is_authenticated:
+                return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=401)
             data = json.loads(request.body)
             latitude = data.get('lat')
             longitude = data.get('lng')
@@ -1073,10 +1093,21 @@ def edit_driver_profile(request):
         if request.FILES.get('profile_image'):
             driver.profile_image = request.FILES.get('profile_image')
 
+        phone = request.POST.get('phone')
+        
+        # Validate phone number
+        if not phone or len(phone) != 10:
+            messages.error(request, 'Phone number must be exactly 10 digits.')
+            return redirect('edit_profile')
+            
+        if CustomUser.objects.filter(username=phone).exclude(id=request.user.id).exists():
+            messages.error(request, 'This phone number is already registered to another account.')
+            return redirect('edit_profile')
+
         # Update user details
         request.user.first_name = request.POST.get('first_name')
         request.user.last_name = request.POST.get('last_name')
-        request.user.username = request.POST.get('phone')
+        request.user.username = phone
 
         # Save the changes
         request.user.save()
@@ -1099,10 +1130,19 @@ def get_nearby_hospitals(request):
     user_longitude = request.GET.get('longitude')
 
     if user_latitude and user_longitude:
-        user_location = (float(user_latitude), float(user_longitude))
+        user_lat = float(user_latitude)
+        user_lng = float(user_longitude)
+        user_location = (user_lat, user_lng)
 
-        # Fetch all hospitals
-        hospitals = Hospital.objects.all()
+        # Optimization: Pre-filter hospitals using a bounding box (~10km radius)
+        lat_delta = 0.09
+        lng_delta = 0.09 / math.cos(math.radians(user_lat))
+
+        # Fetch only hospitals within the bounding box
+        hospitals = Hospital.objects.filter(
+            latitude__range=(user_lat - lat_delta, user_lat + lat_delta),
+            longitude__range=(user_lng - lng_delta, user_lng + lng_delta)
+        )
         hospital_distances = []
 
         # Calculate distance from user location to each hospital

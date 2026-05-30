@@ -11,8 +11,8 @@ User = get_user_model()
 
 class DriverLocation(models.Model):
     driver = models.OneToOneField(Driver, on_delete=models.CASCADE, related_name='driver_location')
-    latitude = models.DecimalField(max_digits=9, decimal_places=6)
-    longitude = models.DecimalField(max_digits=9, decimal_places=6)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, db_index=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, db_index=True)
     location_name = models.CharField(max_length=255)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -36,20 +36,25 @@ class Feedback(models.Model):
         return f"Feedback for Ride {self.ride.id} - {self.rating} stars"
 
     def save(self, *args, **kwargs):
+        is_new = self.pk is None
         # Call the original save method to ensure feedback is saved
         super().save(*args, **kwargs)
 
-        # Update the driver's cumulative rating
-        driver = self.ride.driver
-        if self.rating is not None:
+        # Update the driver's cumulative rating only if it's a new review
+        if is_new and self.rating is not None:
+            driver = self.ride.driver
             # Use F expressions to avoid race conditions
             from django.db.models import F
+            from django.db.models.functions import Coalesce
 
             # Update total rating and count atomically
-            driver.rating_total = F('rating_total') + self.rating
-            driver.rating_count = F('rating_count') + 1
+            driver.rating_total = Coalesce(F('rating_total'), 0.00) + self.rating
+            driver.rating_count = Coalesce(F('rating_count'), 0) + 1
             driver.save(update_fields=['rating_total', 'rating_count'])
 
+
+def generate_token():
+    return uuid.uuid4().hex[:16]
 
 class Ride(models.Model):
     driver = models.ForeignKey('verify.Driver', on_delete=models.CASCADE)
@@ -59,8 +64,8 @@ class Ride(models.Model):
     estimated_time = models.CharField(max_length=50, blank=True, null=True)
     estimated_distance = models.CharField(max_length=50, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    is_confirmed = models.BooleanField(default=False)
-    token = models.CharField(max_length=32, unique=True, default=uuid.uuid4().hex[:16])
+    is_confirmed = models.BooleanField(default=False, db_index=True)
+    token = models.CharField(max_length=32, unique=True, default=generate_token)
     pickup_latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     pickup_longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     drop_latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
@@ -68,8 +73,8 @@ class Ride(models.Model):
     fare = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     ambulance_type = models.CharField(max_length=50, blank=True, null=True)
     code = models.CharField(max_length=4, unique=True, blank=True, null=True)
-    is_verified = models.BooleanField(default=False, blank=True, null=True)
-    is_completed = models.BooleanField(default=False, blank=True, null=True)
+    is_verified = models.BooleanField(default=False, blank=True, null=True, db_index=True)
+    is_completed = models.BooleanField(default=False, blank=True, null=True, db_index=True)
     payment_confirmed = models.BooleanField(default=False, blank=True, null=True)
     status = models.CharField(max_length=20, default='pending', blank=True, null=True)
     is_paid = models.BooleanField(default=False, blank=True, null=True)
@@ -99,3 +104,11 @@ class Hospital(models.Model):
 
     def __str__(self):
         return self.name
+
+class Pricing(models.Model):
+    ambulance_type = models.CharField(max_length=50, unique=True, help_text="e.g. med_bls, med_als, med_icu")
+    base_fare = models.DecimalField(max_digits=10, decimal_places=2, default=50.00)
+    per_km_rate = models.DecimalField(max_digits=10, decimal_places=2, default=10.00)
+    
+    def __str__(self):
+        return f"{self.ambulance_type} Pricing"

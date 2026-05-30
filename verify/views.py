@@ -12,6 +12,9 @@ def main_view(request):
 
 
 
+from django.db import transaction
+
+@transaction.atomic
 def signup_view(request):
     if request.user.is_authenticated:
         return redirect('/')  # Redirect authenticated users
@@ -35,6 +38,17 @@ def signup_view(request):
             return redirect('signup')
         if len(phone) != 10:
             messages.error(request, 'Phone Number should be 10 digits')
+            return redirect('signup')
+
+        # Password validation
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError
+        
+        try:
+            validate_password(password)
+        except ValidationError as e:
+            for error in e.messages:
+                messages.error(request, error)
             return redirect('signup')
 
         # Create new user
@@ -65,8 +79,11 @@ def login_view(request):
     if request.user.is_authenticated:
         return redirect('/')
     if request.method == 'POST':
-        phone = request.POST['phone']
-        password = request.POST['password']
+        phone = request.POST.get('phone')
+        password = request.POST.get('password')
+        if not phone or not password:
+            messages.error(request, 'Please provide both phone number and password.')
+            return render(request, 'login.html')
         user = authenticate(request, username=phone, password=password)
         if user is not None:
             login(request, user)
@@ -84,17 +101,6 @@ def logout_view(request):
     logout(request)
     messages.info(request, 'You have been logged out.')
     return redirect('login')  # Redirect to login page after logout
-
-@login_required
-def driver_dashboard_view(request):
-    # Logic to fetch driver-specific data
-    driver = request.user.driver_profile  # Assuming CustomUser has a one-to-one relation with Driver
-
-    context = {
-        'driver': driver,  # Pass driver data to the template
-        # Add any additional context data needed for the template
-    }
-    return render(request, 'dashboard.html', context)
 
 # @driver_required
 # def restricted_view(request):

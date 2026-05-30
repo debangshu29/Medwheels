@@ -1,0 +1,392 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business-MedWheels</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+            background-color: #fff;
+            font-family: Arial, sans-serif;
+            overflow-x: hidden;
+        }
+
+        nav {
+            padding: 5px 20px;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            background-color: white;
+            box-shadow: 3px 3px 5px rgba(147, 147, 147, 0.1);
+            position: relative;
+        }
+
+        .head-left {
+            display: flex;
+            align-items: center;
+        }
+
+        .head-left h4 {
+            font-size: 17px;
+            padding-right: 20px;
+            margin-right: 10px;
+        }
+
+        .head-left h4 i {
+            padding-right: 3px;
+        }
+
+        .head-left h4 span {
+            color: rgb(255, 112, 60);
+        }
+
+        .navbar-links {
+            display: flex;
+        }
+
+        .navbar-links a {
+            text-decoration: none;
+            padding: 5px 15px;
+            margin: 5px 10px;
+            color: black;
+            font-size: 18px;
+            font-weight: 500;
+            border-radius: 20px;
+        }
+
+        .navbar-links a:hover {
+            background: rgb(255, 238, 238);
+        }
+
+        .menu-icon {
+            display: none;
+            font-size: 24px;
+            cursor: pointer;
+            margin-left: auto;
+        }
+
+        /* Blur effect on the main content */
+        .blurred {
+            filter: blur(4px);
+            /* Adjust the blur intensity as needed */
+            transition: filter 0.3s ease;
+            /* Smooth transition for the blur effect */
+        }
+
+
+        /* Responsive Styles */
+        @media screen and (max-width: 768px) {
+            .navbar-links {
+                display: none;
+                position: absolute;
+                top: 50px;
+                right: 20px;
+                background: white;
+                flex-direction: column;
+                width: 150px;
+                box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.1);
+                z-index: 1000;
+            }
+
+            .navbar-links a {
+                padding: 10px 15px;
+                margin: 0;
+                text-align: right;
+                color: black;
+            }
+
+            .menu-icon {
+                display: block;
+                margin-left: auto;
+            }
+
+            .navbar-links.active {
+                display: flex;
+                position: fixed;
+                /* top: 0; */
+                right: 0;
+                height: 100vh;
+                width: 250px;
+                /* background-color: rgba(151, 151, 151, 0.326); */
+                background-color: rgb(250, 236, 255, 55%);
+                /* Ensure the background remains readable */
+                box-shadow: -10px 0 10px rgb(0 0 0 / 30%);
+                flex-direction: column;
+                align-items: flex-start;
+                justify-content: flex-start;
+                z-index: 1000;
+            }
+        }
+
+        /* Prevent scroll when the menu is active */
+        .no-scroll {
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Disable pointer events when the menu is active */
+        .hero.no-click {
+            pointer-events: none;
+            /* Optional: Reduce opacity to visually indicate the disabled state */
+            opacity: 0.5;
+        }
+
+        /* hero */
+        .hero {
+            display: flex;
+            /* justify-content: center; */
+            align-items: center;
+            margin: 20px;
+        }
+
+        .hero .text h1 {
+            font-size: 35px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .hero .text h1 span {
+            color: #ff703c;
+        }
+
+        .hero .text p {
+            font-size: 25px;
+            padding-right: 20px;
+            color: rgb(31, 31, 31);
+        }
+
+        .hero .text button {
+            border: none;
+            outline: none;
+            padding: 10px 15px;
+            font-size: 18px;
+            margin-top: 20px;
+            border-radius: 4px;
+            background: #ff703c;
+        }
+
+        .hero .text button a {
+            text-decoration: none;
+            color: #fff;
+        }
+
+        .hero .text button:hover {
+            background: #ff6127;
+        }
+
+        .hero .img img {
+            width: 400px;
+        }
+
+        /* card */
+        .card {
+            padding: 20px;
+        }
+
+        h2 {
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+
+        ul {
+            list-style: none;
+            padding-left: 0;
+            margin-bottom: 20px;
+        }
+
+        li {
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+
+        .tick {
+            color: #ff703c;
+            margin-right: 5px;
+        }
+
+        .cta-button {
+            padding: 10px 20px;
+            background-color: #ff703c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        .cta-button:hover {
+            background-color: #ff6127;
+        }
+
+        .foot {
+            width: 100%;
+            padding: 10px;
+            background-color: #fff;
+            box-shadow: -1px -4px 5px 2px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            margin-top: 5px;
+        }
+
+        .foot h4 {
+            font-size: 14px;
+            font-weight: 400;
+        }
+
+        .foot h4 span {
+            color: rgb(255, 112, 60);
+        }
+
+
+        /* Media Queries for Smaller Devices */
+@media screen and (max-width: 768px) {
+    .hero {
+        flex-direction: column; /* Stack the content vertically */
+        text-align: center;
+    }
+
+    .hero .text {
+        margin-bottom: 10px;
+    }
+
+    .hero .text h1 {
+        font-size: 24px; /* Adjust the heading size */
+    }
+
+    .hero .text p {
+        font-size: 16px; /* Adjust the paragraph size */
+        padding-right: 0; /* Remove padding on smaller screens */
+    }
+
+    .card {
+        margin: 10px; /* Reduce margins for smaller screens */
+    }
+
+    .foot h4 {
+        font-size: 12px; /* Adjust footer text size */
+    }
+}
+    </style>
+</head>
+
+<body>
+    <nav>
+        <div class="head-left">
+            <h4><i class="fa-solid fa-truck-medical"></i>Med<span>Wheels</span></h4>
+        </div>
+        <div class="navbar-links">
+            <a href="/">Home</a>
+            <a href="#">Contact</a>
+            <a href="about">About</a>
+        </div>
+        <span class="menu-icon"><i class="fas fa-ellipsis-h"></i></span>
+    </nav>
+
+    <!-- Overlay element for blur effect -->
+    <div class="blur-overlay"></div>
+
+    <div class="hero">
+        <div class="text">
+            <h1>Be a part of our Med<span>Wheels</span> Team.</h1>
+            <p>We are glad you want to join us in exploring a world of opportunities at MedWheels.</p>
+            <button><a href="">Join Us</a></button>
+        </div>
+        <div class="img">
+            <img src="/static/business1.jpg" alt="">
+        </div>
+    </div>
+
+    <section class="card">
+        <h2>For Drivers</h2>
+        <ul>
+            <li><span class="tick">✔️</span> <strong>Simple Commission:</strong> Earn the majority of your earnings with
+                a transparent 10% commission.</li>
+            <li><span class="tick">✔️</span> <strong>Easy Signup:</strong> Become a driver quickly and easily with our
+                streamlined process.</li>
+            <li><span class="tick">✔️</span> <strong>Safety & Support:</strong> Enjoy peace of mind with features like
+                background checks and 24/7 support.</li>
+        </ul>
+        <button class="cta-button">Become a Driver Today!</button>
+    </section>
+
+    <section class="card">
+        <h2>For Businesses (Hospitals)</h2>
+        <ul>
+            <li><span class="tick">✔️</span> <strong>Targeted Marketing:</strong> Reach potential patients in your area.
+            </li>
+            <li><span class="tick">✔️</span> <strong>Increased Visibility:</strong> Boost your hospital's online
+                presence and generate more leads.</li>
+            <li><span class="tick">✔️</span> <strong>Community Engagement:</strong> Show your commitment to local
+                communities.</li>
+            <li><span class="tick">✔️</span> <strong>Sponsorship Packages:</strong> Choose a package that fits your
+                needs.</li>
+        </ul>
+        <button class="cta-button">Contact Us for a Customized Partnership</button>
+    </section>
+
+    <section class="foot">
+        <h4>© Copyright Reserves | <span>@DeskDuo</span></h4>
+    </section>
+
+
+
+    <script>
+        // Toggle navbar links, overlay, and disable hero interactions
+        document.querySelector('.menu-icon').addEventListener('click', function () {
+            const navbarLinks = document.querySelector('.navbar-links');
+            const heroSection = document.querySelector('.hero');
+            const footerSection = document.querySelector('.foot');
+            const body = document.body;
+
+            navbarLinks.classList.toggle('active');
+            heroSection.classList.toggle('blurred');
+            footerSection.classList.toggle('blurred');
+
+            // Toggle scroll prevention and interaction disabling
+            if (navbarLinks.classList.contains('active')) {
+                body.classList.add('no-scroll'); // Prevent scrolling
+                heroSection.classList.add('no-click'); // Disable hero interactions
+            } else {
+                body.classList.remove('no-scroll'); // Enable scrolling
+                heroSection.classList.remove('no-click'); // Enable hero interactions
+            }
+        });
+
+        // Close navbar links when clicking outside
+        document.addEventListener('click', function (event) {
+            const navbarLinks = document.querySelector('.navbar-links');
+            const menuIcon = document.querySelector('.menu-icon');
+            const heroSection = document.querySelector('.hero');
+            const footerSection = document.querySelector('.foot');
+            const body = document.body;
+
+            if (navbarLinks.classList.contains('active') &&
+                !navbarLinks.contains(event.target) &&
+                !menuIcon.contains(event.target)) {
+                // Close the navbar
+                navbarLinks.classList.remove('active');
+                heroSection.classList.remove('blurred');
+                footerSection.classList.remove('blurred');
+                body.classList.remove('no-scroll');
+                heroSection.classList.remove('no-click');
+            }
+        });
+
+
+    </script>
+</body>
+
+</html>

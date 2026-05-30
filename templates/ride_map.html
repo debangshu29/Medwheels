@@ -162,7 +162,7 @@
         }
     </style>
 </head>
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAvSl8hKmXkz9tE8ctzuXtRQz0Y2lUFknI&libraries=geometry&callback=initMap" async defer></script>
+<script src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&libraries=geometry&callback=initMap" async defer></script>
 <body>
     <section class="hero">
         <div class="hero-left">
@@ -327,7 +327,7 @@
                         console.log('Driver movement is below threshold, no update needed.');
                     }
 
-                    fetchDriverLocation();  // Continue fetching the next location update
+                    setTimeout(fetchDriverLocation, 10000);  // Wait 10 seconds before fetching again
                 },
                 function (error) {
                     handleLocationError(error, highAccuracy);
@@ -359,6 +359,29 @@
 
             requestAnimationFrame(animateMarker);
         }
+
+        function pollDriverLocation() {
+            if (!isDriver) {
+                fetch(`/ride/{{ ride_id }}/driver-location/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.is_stale) {
+                            alert("Warning: The driver has lost GPS connection. The location shown might be outdated.");
+                        } else if (data.latitude && data.longitude) {
+                            const newDriverLatLng = {
+                                lat: parseFloat(data.latitude),
+                                lng: parseFloat(data.longitude)
+                            };
+                            smoothMoveMarker(driverMarker, driverLatLng, newDriverLatLng);
+                            driverLatLng = newDriverLatLng;
+                            updateRoute();
+                        }
+                    })
+                    .catch(err => console.error(err));
+            }
+        }
+        
+        setInterval(pollDriverLocation, 10000); // Check every 10 seconds if we're the passenger
 
         function updateDriverLocationOnServer(location) {
             console.log('Updating driver location on server:', location);

@@ -1,0 +1,112 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body, html {
+            font-family: Arial, sans-serif;
+            width: 100%;
+            height: 100%;
+        }
+
+        .contain {
+            background-color: rgb(250, 236, 255);
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .pay {
+            background: #fff;
+            width: 100%;
+            max-width: 350px;
+            border-radius: 6px;
+            text-align: center;
+            padding: 20px;
+            color: #070707;
+            box-shadow: 0 2px 7px rgba(0, 0, 0, 0.2);
+        }
+
+        .pay img {
+            width: 50%;
+            max-width: 130px;
+            margin-top: -80px;
+            border-radius: 50%;
+        }
+
+        .pay h1 {
+            font-size: 1.5em;
+            font-weight: 700;
+            margin-top: 20px;
+        }
+
+        .pay p {
+            font-size: 1.1em;
+            padding: 10px 0;
+        }
+
+        @media (max-width: 480px) {
+            .pay img {
+                width: 70px;
+                margin-top: -50px;
+            }
+
+            .pay h1 {
+                font-size: 1.2em;
+            }
+
+            .pay p {
+                font-size: 1em;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="contain">
+        <div class="pay">
+            <img src="/static/pay.png" alt="">
+            <h1>Payment Required</h1>
+            <p>Please pay the driver in cash to complete the ride.</p>
+        </div>
+    </div>
+    <script>
+        const rideId = '{{ ride_id }}';  // Replace with actual ride_id, Django template variable, or similar
+
+        function checkPaymentStatus() {
+            fetch(`/ride/${rideId}/check-payment-status/`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = data.redirect_url;  // Redirect user to feedback page
+                } else {
+                    console.log(data.message);  // Optionally handle the case where payment is not confirmed yet
+                }
+            })
+            .catch(error => console.error('Error checking payment status:', error));
+        }
+
+        // Periodically check payment status every 5 seconds
+        setInterval(checkPaymentStatus, 5000);
+    </script>
+</body>
+
+</html>

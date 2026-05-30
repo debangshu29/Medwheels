@@ -1,0 +1,536 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedWheels-about</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        /* Base Styles (for screens larger than 768px) */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        nav {
+            padding: 5px 20px;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            background-color: white;
+            box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .head-left {
+            display: flex;
+            align-items: center;
+        }
+
+        .head-left h4 {
+            font-size: 17px;
+            padding-right: 20px;
+            margin-right: 10px;
+        }
+
+        .head-left h4 i {
+            padding-right: 3px;
+        }
+
+        .head-left h4 span {
+            color: rgb(255, 112, 60);
+        }
+
+        .navbar-links {
+            display: flex;
+        }
+
+        .navbar-links a {
+            text-decoration: none;
+            padding: 5px 15px;
+            margin: 5px 10px;
+            color: black;
+            font-size: 18px;
+            font-weight: 500;
+            border-radius: 20px;
+        }
+
+        .navbar-links a:hover {
+            background: rgb(255, 238, 238);
+        }
+
+        .menu-icon {
+            display: none;
+            font-size: 24px;
+            cursor: pointer;
+            margin-left: auto;
+        }
+
+        .blurred {
+            filter: blur(4px);
+            transition: filter 0.3s ease;
+        }
+
+        /* keyframes */
+        @keyframes fade-up {
+            0% {
+                opacity: 0;
+                transform: translateY(30px) scale(0.9);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0px) scale(1);
+            }
+        }
+
+        /* hero section */
+        .hero .defination {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            width: 60%;
+            margin: auto;
+            padding-top: 40px;
+            animation: fade-up 0.5s;
+        }
+
+        .hero .defination h2 {
+            font-size: 25px;
+            padding: 5px 0 15px 0;
+        }
+
+        .hero .defination h2 span {
+            color: rgb(255, 112, 60);
+        }
+
+        .hero .defination p {
+            line-height: 1.5rem;
+            color: rgb(31, 31, 31);
+            font-size: 19px;
+        }
+
+        .hero .mission,
+        .hero .vission {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 85%;
+            margin: auto;
+            padding-top: 40px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            animation: fade-up 0.5s;
+        }
+
+        .mission .img,
+        .vission .img {
+            margin: 10px;
+            padding-right: 20px;
+        }
+
+        .mission .img img,
+        .vission .img img {
+            width: 300px;
+            display: block;
+            transition: 0.3s;
+        }
+
+        .mission .img:hover img,
+        .vission .img:hover img {
+            scale: 1.1;
+        }
+
+        .mission .text,
+        .vission .text {
+            margin: 10px;
+            padding: 0 30px;
+        }
+
+        .mission .text h1,
+        .vission .text h1 {
+            margin-bottom: 10px;
+            font-size: 40px;
+            font-weight: 600;
+        }
+
+        .mission .text h1 span,
+        .vission .text h1 span {
+            color: #ff703c;
+        }
+
+        .mission .text p,
+        .vission .text p {
+            font-size: 20px;
+            color: rgb(31, 31, 31);
+        }
+
+        .mission .text .bold,
+        .vission .text .bold {
+            font-weight: 600;
+        }
+
+        /* working section */
+        .working h1 {
+            font-size: 30px;
+            margin-bottom: 20px;
+        }
+
+        .working h1 span {
+            color: #ff703c;
+        }
+
+        .working {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            margin: 20px 0;
+            padding: 20px 10px;
+        }
+
+        .working .card-contain {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        .working .card {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 250px;
+            height: 350px;
+            border: 1px solid rgb(129, 129, 129);
+            border-radius: 10px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .working .card .card-img {
+            border-radius: 50%;
+            border: 1px solid #e78267;
+            box-shadow: 3px 3px 3px #e78267;
+            width: 100px;
+            height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .working .card .card-img i {
+            padding: 20px 25px;
+            font-size: 60px;
+            color: #ff622a;
+        }
+
+        .working .card .card-text {
+            text-align: center;
+            flex-grow: 1;
+        }
+
+        .working .card .card-text h2 {
+            font-size: 19px;
+            padding: 10px 0;
+            margin-bottom: 10px;
+            color: rgb(23, 23, 23);
+        }
+
+        .working .card .card-text p {
+            font-size: 17px;
+            color: rgb(31, 31, 31);
+            padding: 0 10px;
+            margin-top: 0;
+            margin-bottom: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* footer */
+        .foot {
+            width: 100%;
+            padding: 10px;
+            background-color: #fff;
+            box-shadow: -1px -4px 5px 2px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            margin-top: 5px;
+        }
+
+        .foot h4 {
+            font-size: 14px;
+            font-weight: 400;
+        }
+
+        .foot h4 span {
+            color: rgb(255, 112, 60);
+        }
+
+        /* Responsive Styles for screens smaller than 768px */
+        @media screen and (max-width: 768px) {
+            nav {
+                padding: 10px 20px;
+            }
+
+            .navbar-links {
+                display: none;
+                position: absolute;
+                top: 50px;
+                right: 20px;
+                background: white;
+                flex-direction: column;
+                width: 150px;
+                box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.1);
+                z-index: 1000;
+            }
+
+            .navbar-links a {
+                padding: 10px 15px;
+                margin: 0;
+                text-align: right;
+                color: black;
+            }
+            /* Prevent scroll when the menu is active */
+            .no-scroll {
+                overflow: hidden;
+                height: 100vh;
+            }
+
+            .menu-icon {
+                display: block;
+                margin-left: auto;
+            }
+
+            .navbar-links.active {
+                display: flex;
+                position: fixed;
+                right: 0;
+                height: 100vh;
+                width: 250px;
+                background-color: rgba(250, 236, 255, 0.55);
+                box-shadow: -10px 0 10px rgba(0, 0, 0, 0.3);
+                flex-direction: column;
+                align-items: flex-start;
+                justify-content: flex-start;
+                z-index: 1000;
+            }
+
+            .hero .defination {
+                width: 90%;
+                padding-top: 20px;
+            }
+
+            .hero .defination h2 {
+                font-size: 22px;
+            }
+
+            .hero .defination p {
+                font-size: 17px;
+            }
+
+            .hero .mission,
+            .hero .vission {
+                flex-direction: column;
+                width: 90%;
+                padding-top: 20px;
+            }
+
+            .mission .img img,
+            .vission .img img {
+                width: 100%;
+                max-width: 250px;
+            }
+
+            .mission .text,
+            .vission .text {
+                padding: 0;
+            }
+
+            .mission .text h1,
+            .vission .text h1 {
+                font-size: 28px;
+            }
+
+            .mission .text p,
+            .vission .text p {
+                font-size: 18px;
+            }
+
+            .working h1 {
+                font-size: 26px;
+            }
+
+            .working .card-contain {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .working .card {
+                width: 100%;
+                max-width: 350px;
+                margin-bottom: 20px;
+            }
+
+            .working .card .card-img {
+                width: 80px;
+                height: 80px;
+            }
+
+            .working .card .card-img i {
+                font-size: 40px;
+            }
+
+            .working .card .card-text h2 {
+                font-size: 18px;
+            }
+
+            .working .card .card-text p {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <nav>
+        <div class="head-left">
+            <h4><i class="fa-solid fa-truck-medical"></i>Med<span>Wheels</span></h4>
+        </div>
+        <div class="navbar-links">
+            <a href="/">Home</a>
+            <a href="#">Services</a>
+            <a href="#">Contact</a>
+        </div>
+        <span class="menu-icon"><i class="fa-solid fa-bars"></i></span>
+    </nav>
+
+    <section class="hero">
+        <div class="defination">
+            <h2>What is Med<span>Wheels</span> ?</h2>
+            <p>MedWheels an online platform for booking and tracking ambulances, offering real-time location updates,
+                providing medical assistance during transport, and separate portals for patients and drivers, ensuring
+                efficient and safe healthcare transport.</p>
+        </div>
+
+        <div class="mission">
+            <div class="img">
+                <img src="/static/about-img1.jpg" alt="">
+            </div>
+            <div class="text">
+                <h1>Our <span>Mission</span></h1>
+                <p>MedWheels aims to provide a seamless, reliable, and secure ambulance booking and tracking service
+                    that prioritizes patient safety and comfort. By offering tailored medical assistance, dedicated
+                    portals for drivers and patients, and robust data security, we aim to enhance emergency medical care
+                    and ensure peace of mind during critical moments.</p>
+                <p class="bold">"Your safety is our priority, from booking to arrival."</p>
+            </div>
+        </div>
+
+        <div class="vission">
+            <div class="text">
+                <h1><span>Our </span>Vission</h1>
+                <p>MedWheels looks forward to revolutionize emergency medical transport by becoming the leading platform
+                    for efficient, real-time ambulance services. We strive to set new standards in patient care, driver
+                    efficiency, and data security, ensuring that everyone has access to timely and compassionate medical
+                    support whenever and wherever it's needed.</p>
+            </div>
+            <div class="img">
+                <img src="/static/about-img2..jpg" alt="">
+            </div>
+        </div>
+    </section>
+
+    <section class="working">
+        <h1><span>H</span>ow it <span>W</span>orks</h1>
+        <div class="card-contain">
+            <div class="card">
+                <div class="card-img">
+                    <i class="fa-solid fa-mobile-screen"></i>
+                </div>
+                <div class="card-text">
+                    <h2>Step 1: Open MedWheels Website</h2>
+                    <p>Open Google and search for MedWheels ambulance service.</p>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-img">
+                    <i class="fa-regular fa-hospital"></i>
+                </div>
+                <div class="card-text">
+                    <h2>Step 2: Choose prefered Hospital</h2>
+                    <p>Choose yours prefered nearby hospital according to service availability.</p>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-img">
+                    <i class="fa-solid fa-truck-medical"></i>
+                </div>
+                <div class="card-text">
+                    <h2>Step 3: Choose your Ambulance</h2>
+                    <p>Choose your ambulance type(eg. MedBasic or MedPro) as per your requirement.</p>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-img">
+                    <i class="fa-solid fa-map-location-dot"></i>
+                </div>
+                <div class="card-text">
+                    <h2>Step 4: Avail Ambulance Service</h2>
+                    <p>Get estimated distance and time of arrival from your location to destination , with real-time GPS
+                        tracking.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="foot">
+        <h4>© Copyright Reserves | <span>@DeskDuo</span></h4>
+    </section>
+
+
+
+
+
+
+
+
+
+    <script>
+        // Toggle navbar links and blur effect on the main content
+        document.querySelector('.menu-icon').addEventListener('click', function () {
+            const navbarLinks = document.querySelector('.navbar-links');
+            const heroSection = document.querySelector('.hero');
+            const footerSection = document.querySelector('.foot');
+            const body = document.body;
+
+            navbarLinks.classList.toggle('active');
+            heroSection.classList.toggle('blurred');
+            footerSection.classList.toggle('blurred');
+
+            // Toggle scroll prevention on the body
+            if (navbarLinks.classList.contains('active')) {
+                body.classList.add('no-scroll'); // Add class to prevent scroll
+            } else {
+                body.classList.remove('no-scroll'); // Remove class to enable scroll
+            }
+        });
+    </script>
+</body>
+
+</html>

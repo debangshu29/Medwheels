@@ -292,7 +292,7 @@
 
 
     </style>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAvSl8hKmXkz9tE8ctzuXtRQz0Y2lUFknI"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}"></script>
 </head>
 
 <body>
@@ -450,27 +450,15 @@
                         lng: position.coords.longitude
                     };
 
-                    var geocoder = new google.maps.Geocoder();
-                    geocoder.geocode({ location: newDriverLocation }, function (results, status) {
-                        if (status === 'OK') {
-                            if (results[0]) {
-                                var locationName = results[0].formatted_address;
-                                console.log('Location Name:', locationName);
-                                sendLocationToBackend(newDriverLocation.lat, newDriverLocation.lng, locationName);
-                            } else {
-                                console.error('No location results found.');
-                            }
-                        } else {
-                            console.error('Geocoder failed due to:', status);
-                        }
-                    });
+                    // Send the raw coordinates to the backend without burning reverse geocoding API quota
+                    sendLocationToBackend(newDriverLocation.lat, newDriverLocation.lng, "Current Location");
                 }, function (error) {
                     console.error('Error getting driver location:', error);
                 });
             } else {
                 console.error('Geolocation is not supported by this browser.');
             }
-        }, 5000);
+        }, 10000);
 
         var modal = document.getElementById("profile-modal");
         var profilePic = document.getElementById("profile-pic");

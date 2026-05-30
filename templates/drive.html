@@ -1,0 +1,514 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drive-MedWheels</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        integrity="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: rgb(250, 236, 255, 55%);
+            font-family: Arial, sans-serif;
+        }
+
+        /* Navbar Styles */
+        nav {
+            padding: 5px 20px;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            background-color: white;
+            box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .head-left {
+            display: flex;
+            align-items: center;
+
+        }
+
+        .head-left h4 {
+            font-size: 17px;
+            padding-right: 20px;
+            margin-right: 10px;
+        }
+
+        .head-left h4 i {
+            padding-right: 3px;
+        }
+
+        .head-left h4 span {
+            color: rgb(255, 112, 60);
+        }
+
+        .navbar-links {
+            display: flex;
+        }
+
+        .navbar-links a {
+            text-decoration: none;
+            padding: 5px 15px;
+            margin: 5px 10px;
+            color: black;
+            font-size: 18px;
+            font-weight: 500;
+            border-radius: 20px;
+        }
+
+        .navbar-links a:hover {
+            background: rgb(255, 238, 238);
+        }
+
+        .menu-icon {
+            display: none;
+            font-size: 24px;
+            cursor: pointer;
+            margin-left: auto;
+        }
+
+        /* Blur effect on the main content */
+        .blurred {
+            filter: blur(4px);
+            /* Adjust the blur intensity as needed */
+            transition: filter 0.3s ease;
+            /* Smooth transition for the blur effect */
+        }
+
+
+        /* Responsive Styles */
+        @media screen and (max-width: 768px) {
+            .navbar-links {
+                display: none;
+                position: absolute;
+                top: 50px;
+                right: 20px;
+                background: white;
+                flex-direction: column;
+                width: 150px;
+                box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.1);
+                z-index: 1000;
+            }
+
+            .navbar-links a {
+                padding: 10px 15px;
+                margin: 0;
+                text-align: right;
+                color: black;
+                font-size: 20px;
+                font-weight: 600;
+            }
+
+            .menu-icon {
+                display: block;
+                margin-left: auto;
+            }
+
+            .navbar-links.active {
+                display: flex;
+                position: fixed;
+                /* top: 0; */
+                right: 0;
+                height: 100vh;
+                width: 250px;
+                background-color: rgb(250, 236, 255, 55%);
+                /* Ensure the background remains readable */
+                box-shadow: -10px 0 10px rgb(0 0 0 / 30%);
+                flex-direction: column;
+                align-items: flex-start;
+                justify-content: flex-start;
+                z-index: 1000;
+                padding-top: 20px;
+            }
+        }
+
+        /* Prevent scroll when the menu is active */
+        .no-scroll {
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* keyframes */
+        @keyframes fade-up {
+            0% {
+                opacity: 0;
+                transform: translateY(30px) scale(0.9);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0px) scale(1);
+            }
+        }
+
+        /* hero section */
+        .hero {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 95%;
+            margin: auto;
+            padding-top: 40px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            animation: fade-up 0.5s;
+        }
+
+        .hero .hero-left {
+            margin: 10px;
+            padding: 0 30px;
+            line-height:2rem;
+        }
+
+        .hero .hero-left h1 {
+            margin-bottom: 20px;
+            font-size: 35px;
+            font-weight: 600;
+        }
+
+        .hero .hero-left p {
+            font-size: 20px;
+            color: rgb(31, 31, 31);
+        }
+
+        .hero .hero-left p span {
+            font-weight: 600;
+            color: #ff4705;
+        }
+
+        .hero .hero-right {
+            margin: 10px;
+            padding-right: 20px;
+        }
+
+        .hero .hero-right img {
+            width: 300px;
+            display: block;
+            transition: 0.3s;
+        }
+
+        .hero .hero-right:hover img {
+            scale: 1.1;
+        }
+
+        /* comission */
+        .comission {
+            margin: 60px;
+            animation: fade-up 0.5s;
+        }
+
+        .comission h2 {
+            font-size: 27px;
+            padding-bottom: 15px;
+        }
+
+        .comission h2 span {
+            color: #ff703c;
+        }
+
+        .comission p {
+            font-size: 18px;
+            color: rgb(31, 31, 31);
+        }
+
+
+        /* to drive */
+        .toDrive {
+            width: 100%;
+            padding: 10px 24px;
+            animation: fade-up .5s;
+            margin-bottom: 15px;
+        }
+
+        .toDrive h2 {
+            font-size: 18px;
+            /* padding: 20px; */
+            padding: 20px;
+            padding-left: 50px;
+            position: relative;
+            margin-bottom: 10px;
+        }
+
+        .toDrive h2:after {
+            content: '';
+            position: absolute;
+            left: 7%;
+            bottom: 7px;
+            transform: translateX(-50%);
+            height: 4px;
+            width: 50px;
+            border-radius: 2px;
+            background-color: rgb(255, 112, 60);
+        }
+
+        .drive {
+            display: flex;
+            justify-content: space-evenly;
+            /* align-items: center; */
+        }
+
+        .drive i {
+            font-size: 20px;
+            padding-bottom: 8px;
+        }
+
+        .drive .fa-circle {
+            font-size: 8px;
+        }
+
+        .drive h4 {
+            font-size: 18px;
+            padding: 10px 0;
+        }
+
+        .toDrive .drive .req {
+            width: 20%;
+        }
+
+        .toDrive .drive .document {
+            width: 40%;
+        }
+
+        .toDrive .drive .signup {
+            width: 30%;
+        }
+
+        .req p {
+            padding-left: 18px;
+            margin: 8px 0;
+        }
+
+        .document p {
+            padding-left: 18px;
+            margin: 8px 0;
+        }
+
+        .signup p {
+            padding-left: 18px;
+            margin: 8px 0;
+        }
+
+        /* buttons */
+        .buttons {
+            margin: 30px;
+            padding-left: 20px;
+            display: flex;
+        }
+
+        .buttons .btn {
+            border: none;
+            outline: auto;
+            color: #fff;
+            background: #ff703c;
+            font-size: 20px;
+            padding: 12px;
+            border-radius: 4px;
+
+        }
+        .buttons .btn a{
+            text-decoration: none;
+            color: #fff;
+        }
+        .buttons .btn:hover {
+            background: #ff662e;
+        }
+
+        /* footer */
+        .foot {
+            width: 100%;
+            padding: 15px;
+            background-color: #fff;
+            box-shadow: -1px -4px 5px 2px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .foot h4 {
+            font-size: 0.9rem;
+            font-weight: 400;
+        }
+
+        .foot h4 span {
+            color: #ff703c;
+        }
+
+
+
+        /* Responsive Styles */
+        @media screen and (max-width: 768px) {
+
+            /* Responsive hero section */
+            .hero {
+                flex-direction: column;
+                align-items: flex-start;
+                text-align: left;
+                padding: 20px;
+            }
+
+            .hero .hero-left,
+            .hero .hero-right {
+                padding: 0;
+                margin: 0;
+                width: 100%;
+            }
+
+            .hero .hero-left h1 {
+                font-size: 28px;
+                margin-bottom: 10px;
+            }
+
+            .hero .hero-left p {
+                font-size: 16px;
+                line-height: 1.5rem;
+            }
+
+            .hero .hero-right img {
+                width: 100%;
+                margin-top: 20px;
+            }
+
+            /* Responsive toDrive section */
+            .drive {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .toDrive h2 {
+                padding: 20px 0;
+            }
+
+            .toDrive .drive .req,
+            .toDrive .drive .document,
+            .toDrive .drive .signup {
+                width: 100%;
+                margin-bottom: 20px;
+            }
+
+            .buttons {
+                margin: 20px;
+                padding-left: 0;
+                text-align: center;
+                flex-direction: column;
+            }
+
+            /* Footer responsive */
+            .foot h4 {
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- navbar -->
+    <nav>
+        <div class="head-left">
+            <h4><i class="fa-solid fa-truck-medical"></i>Med<span>Wheels</span></h4>
+        </div>
+        <div class="navbar-links">
+            <a href="/">Home</a>
+            <a href="#">Business</a>
+            <a href="#">Contact</a>
+            <a href="about">About</a>
+        </div>
+        <span class="menu-icon"><i class="fas fa-bars"></i></span> <!-- Three-dot menu icon -->
+    </nav>
+
+
+    <!-- hero section -->
+    <section class="hero">
+        <div class="hero-left">
+            <h1>Why join us as a driver?</h1>
+            <p><span>Login and Set Availability: </span>Log in and set your availability status on the app.</p>
+            <p><span>Receive Booking Requests: </span>Get notified of new bookings with trip details and can accept or
+                decline.</p>
+            <p><span>Route Guidance: </span>MedWheels provides optimized routes with live traffic updates for faster
+                navigation.</p>
+            <p><span>Status Updates: </span>Update the current status (e.g., arrived, patient onboard) throughout the
+                trip.</p>
+            <p><span>Trip Completion: </span>After the trip, mark it as complete and receive feedback for performance
+                evaluation.</p>
+        </div>
+
+        <div class="hero-right">
+            <img src="/static/about-img2..jpg" alt="">
+        </div>
+    </section>
+
+    <section class="comission">
+        <h2><span>C</span>omission <span>S</span>tructure</h2>
+        <p>We take a 10% commission on every ride fare. This means that if the ride fare is Rs.10, we will take Rs.1 as
+            our commission, and you will receive Rs.9.</p>
+    </section>
+
+
+    <section class="toDrive">
+        <h2>To Drive</h2>
+        <div class="drive">
+            <div class="req">
+                <i class="fa-regular fa-star"></i>
+                <h4>Requirements</h4>
+                <p><i class="fa-solid fa-circle"></i> Be atleast 18 years old</p>
+                <p><i class="fa-solid fa-circle"></i> Clear a background screening</p>
+            </div>
+            <div class="document">
+                <i class="fa-regular fa-file-lines"></i>
+                <h4>Documents</h4>
+                <p><i class="fa-solid fa-circle"></i> Valid driver's license (private or commercial), if you plan to
+                    drive</p>
+                <p><i class="fa-solid fa-circle"></i> Proof of residency in your city, state or province</p>
+                <p><i class="fa-solid fa-circle"></i> Car documents such as commercial insurance, vehicle registration
+                    certificate, permit</p>
+            </div>
+            <div class="signup">
+                <i class="fa-regular fa-square-check"></i>
+                <h4>Signup Process</h4>
+                <p><i class="fa-solid fa-circle"></i> Click on Signup below</p>
+                <p><i class="fa-solid fa-circle"></i> Provide all required document details</p>
+                <p><i class="fa-solid fa-circle"></i> Provide information for a background check</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="buttons">
+        <button class="btn" type="button"><a href="signup">Signup to Get Started</a></button>
+        <button class="btn" type="button"><a href="login">Login to Continue</a></button>
+    </section>
+
+    <section class="foot">
+        <h4>© Copyright Reserves | <span>@DeskDuo</span></h4>
+    </section>
+
+
+
+    <script>
+        // Toggle navbar links and blur effect on the main content
+        document.querySelector('.menu-icon').addEventListener('click', function () {
+            const navbarLinks = document.querySelector('.navbar-links');
+            const heroSection = document.querySelector('.hero');
+            const footerSection = document.querySelector('.foot');
+            const body = document.body;
+
+            navbarLinks.classList.toggle('active');
+            heroSection.classList.toggle('blurred');
+            footerSection.classList.toggle('blurred');
+
+            // Toggle scroll prevention on the body
+            if (navbarLinks.classList.contains('active')) {
+                body.classList.add('no-scroll'); // Add class to prevent scroll
+            } else {
+                body.classList.remove('no-scroll'); // Remove class to enable scroll
+            }
+        });
+    </script>
+</body>
+
+</html>

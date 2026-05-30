@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Confirmation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        .contain {
+            background-color: rgb(250, 236, 255);
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px; /* Add padding to ensure content isn't too close to the edges on small screens */
+        }
+
+        .pay {
+            background: #fff;
+            width: 100%;
+            max-width: 350px; /* Use max-width for responsiveness */
+            border-radius: 6px;
+            text-align: center;
+            padding: 20px;
+            color: #070707;
+            box-shadow: 0 2px 7px rgba(0, 0, 0, 0.2);
+        }
+
+        .pay img {
+            width: 50%;
+            max-width: 130px;
+            margin-top: -50px;
+            border-radius: 50%;
+        }
+
+        .pay h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            padding: 20px 0;
+        }
+
+        .pay p {
+            font-size: 1.2rem;
+            padding: 10px 0;
+        }
+
+        .pay button {
+            border: none;
+            outline: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            background: rgb(74, 181, 7);
+            margin: 15px 0 10px 0;
+            border-radius: 4px;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .pay button:hover {
+            background: rgba(74, 181, 7, 0.869);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 480px) {
+            .pay {
+                padding: 15px;
+            }
+
+            .pay img {
+                margin-top: -40px;
+            }
+
+            .pay h1 {
+                font-size: 1.25rem;
+                padding: 15px 0;
+            }
+
+            .pay p {
+                font-size: 1rem;
+                padding: 8px 0;
+            }
+
+            .pay button {
+                font-size: 0.9rem;
+                padding: 9px 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="contain">
+        <div class="pay">
+            <img src="/static/pay.png" alt="Payment Image">
+            <h1>Confirm Payment</h1>
+            <p>Please confirm that you have received the payment in cash.</p>
+            <button onclick="confirmPayment()">Payment Received</button>
+        </div>
+    </div>
+
+    <script>
+        function confirmPayment() {
+            console.log("Confirm payment triggered");
+            fetch(`/ride/{{ ride_id }}/confirm-payment/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (data.redirect_url) {
+                        window.location.href = data.redirect_url;
+                    } else {
+                        alert('Redirection URL not found.');
+                    }
+                } else {
+                    alert('Failed to confirm payment: ' + data.error);
+                }
+            })
+            .catch(error => console.error('Error confirming payment:', error));
+        }
+    </script>
+</body>
+
+</html>

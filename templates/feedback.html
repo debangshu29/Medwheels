@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback</title>
+    <style>
+        /* Reset and basic styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: rgba(0, 0, 0, 0.5);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+            background-image: url('/static/feedback_bg.png'); /* Change to your image path */
+            background-size: cover;
+            background-position: center;
+        }
+
+        .feedback-container {
+            background: white;
+            width: 90%;
+            max-width: 400px;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 9px 15px rgba(0, 0, 0, 0.2);
+            position: relative;
+            margin: 10px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .star-rating {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .star-rating i {
+            font-size: 30px;
+            color: gray;
+            cursor: pointer;
+            margin: 0 5px;
+        }
+
+        .star-rating i.active {
+            color: gold;
+        }
+
+        .options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+            justify-content: center;
+        }
+
+        .options label {
+            display: inline-block;
+            flex-basis: 100%; /* Make each option take the full width */
+            background: #f0f0f0;
+            color: #333;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            /*border: 2px solid #ccc;*/
+            transition: background 0.3s, color 0.3s, border-color 0.3s;
+            text-align: center; /* Center text */
+        }
+
+        .options input[type="checkbox"] {
+            display: none;
+        }
+
+        .options input[type="checkbox"]:checked + label {
+            background: #f0f0f0;
+            color: black;
+            border-color: black; /* Change border color to black when selected */
+            border: 2px solid black;
+        }
+
+        /* Ensure the second and third options are on the same line */
+        #option2 + label, #option3 + label {
+            flex-basis: calc(50% - 5px); /* Make them share the same row */
+        }
+
+        textarea {
+            width: 100%;
+            height: 80px;
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background: rgb(74, 181, 7);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background: rgba(74, 181, 7, 0.8);
+        }
+
+        .skip {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+            color: grey;
+            text-decoration: none;
+        }
+
+        .skip:hover {
+            color: black;
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 768px) {
+            .feedback-container {
+                width: 80%;
+                padding: 15px;
+            }
+
+            .star-rating i {
+                font-size: 25px;
+                margin: 0 3px;
+            }
+
+            button {
+                font-size: 14px;
+            }
+
+            .options label {
+                padding: 8px 15px; /* Adjust padding for smaller screens */
+            }
+        }
+
+        @media (max-width: 480px) {
+            .feedback-container {
+                width: 95%;
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 18px;
+            }
+
+            .star-rating i {
+                font-size: 20px;
+            }
+
+            textarea {
+                height: 60px;
+            }
+
+            button {
+                font-size: 12px;
+                padding: 8px;
+            }
+
+            .skip {
+                font-size: 12px;
+            }
+
+            .options label {
+                flex-basis: 100%;
+                text-align: center; /* Center text in options */
+            }
+
+            #option2 + label, #option3 + label {
+                flex-basis: 48%; /* Adjust for smaller screens */
+            }
+        }
+    </style>
+    <!-- Font Awesome for Star Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="anonymous" referrerpolicy="no-referrer" />
+</head>
+<body>
+    <div class="feedback-container">
+        <a class="skip" href="#" onclick="skipFeedback()">Skip</a>
+        <h1>Provide Feedback</h1>
+        <form method="post">
+            {% csrf_token %}
+            <div class="star-rating">
+                <i class="fas fa-star" data-rating="1"></i>
+                <i class="fas fa-star" data-rating="2"></i>
+                <i class="fas fa-star" data-rating="3"></i>
+                <i class="fas fa-star" data-rating="4"></i>
+                <i class="fas fa-star" data-rating="5"></i>
+            </div>
+            <input type="hidden" name="rating" id="rating" value="0">
+            <div class="options">
+                <input type="checkbox" id="option1" name="options" value="Driver's behavior was good">
+                <label for="option1">Driver's behavior was good</label>
+
+                <input type="checkbox" id="option2" name="options" value="Ambulance was clean">
+                <label for="option2">Ambulance was clean</label>
+
+                <input type="checkbox" id="option3" name="options" value="Ride was smooth">
+                <label for="option3">Ride was smooth</label>
+            </div>
+            <label for="comments">Comments:</label>
+            <textarea name="comments" id="comments" placeholder="Additional comments..."></textarea>
+            <button type="submit">Submit Feedback</button>
+        </form>
+    </div>
+
+    <script>
+        // Rating star functionality
+        document.querySelectorAll('.star-rating i').forEach(star => {
+            star.addEventListener('click', () => {
+                const rating = star.getAttribute('data-rating');
+                document.getElementById('rating').value = rating;
+                document.querySelectorAll('.star-rating i').forEach(s => {
+                    s.classList.remove('active');
+                    if (s.getAttribute('data-rating') <= rating) {
+                        s.classList.add('active');
+                    }
+                });
+            });
+        });
+
+        // Redirect to the main page when skipping feedback
+        function skipFeedback() {
+            window.location.href = '/';  // Replace with your main page URL
+        }
+    </script>
+</body>
+</html>

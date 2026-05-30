@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nearby Hospitals</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* Basic styles for the hospital list */
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .hospital-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        .hospital-item {
+            padding: 15px;
+            border: 1px solid #ccc;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+        }
+        .hospital-item button {
+            margin-right: 10px;
+            padding: 8px 12px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .hospital-item button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Nearby Hospitals</h1>
+    <ul class="hospital-list" id="hospital-list">
+        <!-- Hospital items will be inserted here dynamically -->
+    </ul>
+
+    <script>
+        // Geolocation API to get user location
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
+
+                // Log the user's current location to the console
+                console.log(`User's current location: Latitude: ${latitude}, Longitude: ${longitude}`);
+
+                // Fetch nearby hospitals based on the user's location
+                fetch(`/get_nearby_hospitals?latitude=${latitude}&longitude=${longitude}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Check if the response is an array
+                        if (Array.isArray(data)) {
+                            const hospitalList = document.getElementById('hospital-list');
+                            hospitalList.innerHTML = ''; // Clear existing list if any
+                            data.forEach(hospital => {
+                                const li = document.createElement('li');
+                                li.className = 'hospital-item';
+                                li.innerHTML = `
+                                    <strong>${hospital.name}</strong><br>
+                                    Address: ${hospital.address}<br>
+                                    Rating: ${hospital.rating || 'No rating'}<br>
+                                    Distance: ${hospital.distance} km<br>
+                                    <button onclick="bookHospital('${hospital.id}', '${latitude}', '${longitude}', '${hospital.address}')">Book</button>
+                                    <button onclick="callHospital('${hospital.phone_number}')">Call</button>
+                                    <button onclick="visitWebsite('${hospital.website}')">Visit</button>
+                                `;
+                                hospitalList.appendChild(li);
+                            });
+                        } else {
+                            console.error('Unexpected data format:', data);
+                        }
+                    })
+                    .catch(error => console.error('Error fetching hospitals:', error));
+            }, function(error) {
+                alert('Error fetching location: ' + error.message);
+            });
+        } else {
+            alert("Geolocation is not supported by this browser.");
+        }
+
+        function bookHospital(hospitalId, userLat, userLng, hospitalAddress) {
+            // Redirect to the service page with the user's current location and hospital address
+            window.location.href = `/new_service?hospital_id=${hospitalId}&pickup_lat=${userLat}&pickup_lng=${userLng}&drop=${encodeURIComponent(hospitalAddress)}`;
+        }
+
+        function callHospital(phoneNumber) {
+            window.location.href = `tel:${phoneNumber}`;
+        }
+
+        function visitWebsite(url) {
+            window.open(url, '_blank');
+        }
+    </script>
+</body>
+</html>
